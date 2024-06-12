@@ -34,4 +34,5 @@
 .vs
 *.user
 x64/*
+mrf_yzzy/*
 *~
