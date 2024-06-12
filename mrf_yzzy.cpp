@@ -64,7 +64,7 @@ int main(int argc, char **argv) {
 
     if (hDatasetin == NULL) {
         CPLError(CE_Failure, CPLE_AppDefined, "Can't open source file %s for reading", SourceName.c_str());
-        return false;
+        return 0;
     }
 
     if (!EQUAL(GDALGetDriverShortName(GDALGetDatasetDriver(hDatasetin)), "MRF"))
@@ -123,6 +123,7 @@ int main(int argc, char **argv) {
         // Free options
         else if (STARTS_WITH_CI(*md, "V1=")
             || STARTS_WITH_CI(*md, "GZ=")
+            || STARTS_WITH_CI(*md, "ZSTD=")
             || STARTS_WITH_CI(*md, "RAWZ=")
             || STARTS_WITH_CI(*md, "DEFLATE=")
             || STARTS_WITH_CI(*md, "LERC_PREC=")
@@ -161,9 +162,10 @@ int main(int argc, char **argv) {
         }
     }
 
+    GDALClose(hDatasetin);
+
     // Operating on a block of size
     size_t BSZ = static_cast<size_t>(csz) * psz * pszy * pszx * dtsz;
-    GDALClose(hDatasetin);
 
     // These are the input strides
     int pix_stride = dtsz;
@@ -175,7 +177,9 @@ int main(int argc, char **argv) {
     char *buffer  = reinterpret_cast<char *>(malloc(BSZ));
 
     if (!buffer)
-        return Usage(CPLOPrintf("Can't allocate buffer of size %llu", BSZ), 3);
+        return Usage(CPLOPrintf("Failed to allocate buffer of size %llu", BSZ), 3);
+    if (verbose)
+        cout << "Using an " << BSZ << " sized buffer\n";
 
     // Reading, Loop over y, x, z and c.
     // Start refers to input
@@ -212,11 +216,11 @@ int main(int argc, char **argv) {
                 outh[z] = h;
             }
 
+            // This loop does a full cublock
             for (int startx = 0; startx < xsz; startx += pszx) {
                 int dx = min(pszx, xsz - starty);
                 cout << "Processing " << startx << "," << starty << "," << startz << endl;
-//                fprintf(stderr, "Processing %d,%d,%d\n", startx, starty, startz);
-                // The above loop does full cublocks
+                // fprintf(stderr, "Processing %d,%d,%d\n", startx, starty, startz);
 
                 // Read a cublock
                 for (int z = 0; z < dz; z++) {
